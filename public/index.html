@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đề Xuất Món Ăn</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #34495e;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        #results {
+            margin-top: 2rem;
+        }
+
+        .recipe-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #fde8e8;
+            border-radius: 5px;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .error-details {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #c0392b;
+        }
+
+        .loading {
+            text-align: center;
+            margin-top: 1rem;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Đề Xuất Món Ăn</h1>
+        <div class="input-group">
+            <label for="ingredients">Nhập nguyên liệu (phân cách bằng dấu phẩy):</label>
+            <input type="text" id="ingredients" placeholder="Ví dụ: trứng, hành, thịt gà, rau">
+        </div>
+        <button onclick="getSuggestions()">Đề Xuất Món Ăn</button>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function getSuggestions() {
+            const ingredientsInput = document.getElementById('ingredients');
+            const resultsDiv = document.getElementById('results');
+            
+            // Clear previous results
+            resultsDiv.innerHTML = '<div class="loading">Đang tìm kiếm món ăn phù hợp...</div>';
+            
+            const ingredients = ingredientsInput.value
+                .split(',')
+                .map(i => i.trim())
+                .filter(i => i.length > 0);
+
+            if (ingredients.length === 0) {
+                resultsDiv.innerHTML = '<div class="error">Vui lòng nhập ít nhất một nguyên liệu</div>';
+                return;
+            }
+
+            try {
+                const res = await fetch('/suggest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ingredients })
+                });
+
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    resultsDiv.innerHTML = `
+                        <div class="error">
+                            ${data.error || 'Có lỗi xảy ra khi tìm kiếm món ăn'}
+                            ${data.details ? `<div class="error-details">${data.details}</div>` : ''}
+                        </div>`;
+                    return;
+                }
+                
+                if (data.suggestions.length === 0) {
+                    resultsDiv.innerHTML = '<div class="error">Không tìm thấy món ăn phù hợp với nguyên liệu đã nhập</div>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = data.suggestions
+                    .map(recipe => `<div class="recipe-card">${recipe}</div>`)
+                    .join('');
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        Có lỗi xảy ra khi tìm kiếm món ăn
+                        <div class="error-details">${error.message}</div>
+                    </div>`;
+                console.error('Error:', error);
+            }
+        }
+
+        // Allow pressing Enter to submit
+        document.getElementById('ingredients').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                getSuggestions();
+            }
+        });
+    </script>
+</body>
+</html> 
