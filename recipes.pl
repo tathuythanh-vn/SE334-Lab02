@@ -10,6 +10,7 @@ recipe('Lau Thai', ['tom', 'muc', 'thit bo', 'nam', 'rau thom', 'sa', 'la chanh'
 
 % Định nghĩa các nguyên liệu thay thế
 replacement('thit ga', 'thit bo').
+replacement('thit bo', 'thit ga').
 replacement('thit heo', 'thit bo').
 replacement('nuoc mam', 'tuong').
 
