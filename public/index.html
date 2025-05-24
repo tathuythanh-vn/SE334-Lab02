@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Đề Xuất Món Ăn</title>
+    <link rel="icon" href="/images/food-icon.jpg" type="image/x-icon" />
     <style>
       * {
         margin: 0;
@@ -86,6 +87,31 @@
         margin-bottom: 1rem;
         border-radius: 5px;
         border-left: 4px solid #3498db;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .recipe-image {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 5px;
+      }
+
+      .recipe-content {
+        flex: 1;
+      }
+
+      .recipe-title {
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+      }
+
+      .recipe-ingredients {
+        color: #7f8c8d;
+        font-size: 0.9rem;
       }
 
       .error {
@@ -109,6 +135,37 @@
         margin-top: 1rem;
         color: #7f8c8d;
       }
+
+      .checkbox-group {
+        margin-bottom: 1.5rem;
+      }
+
+      .checkbox-container {
+        display: block;
+        margin-top: 0.5rem;
+        max-height: 300px;
+        overflow-y: auto;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+
+      .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .checkbox-item input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+      }
+
+      .checkbox-item label {
+        margin: 0;
+        font-size: 0.9rem;
+      }
     </style>
   </head>
   <body>
@@ -126,11 +183,33 @@
         />
         <datalist id="ingredients-list"></datalist>
       </div>
+      <div class="checkbox-group">
+        <label>Chọn nguyên liệu:</label>
+        <div id="ingredients-checkboxes" class="checkbox-container"></div>
+      </div>
       <button onclick="getSuggestions()">Đề Xuất Món Ăn</button>
       <div id="results"></div>
     </div>
 
     <script>
+      // Function to get random default food image
+      function getRandomDefaultImage() {
+        const randomNum = Math.floor(Math.random() * 13) + 1; // Random number between 1 and 13
+        return `/images/default-food${randomNum}.jpg`;
+      }
+
+      // Function to update input from checkboxes
+      function updateInputFromCheckboxes() {
+        const checkboxes = document.querySelectorAll(
+          '#ingredients-checkboxes input[type="checkbox"]:checked'
+        );
+        const selectedIngredients = Array.from(checkboxes).map(
+          (cb) => cb.value
+        );
+        document.getElementById("ingredients").value =
+          selectedIngredients.join(", ");
+      }
+
       // Fetch available ingredients when page loads
       async function loadIngredients() {
         try {
@@ -142,11 +221,29 @@
             return;
           }
 
+          // Update datalist
           const datalist = document.getElementById("ingredients-list");
+          // Update checkboxes
+          const checkboxContainer = document.getElementById(
+            "ingredients-checkboxes"
+          );
+          datalist.innerHTML = "";
+          checkboxContainer.innerHTML = "";
+
           data.ingredients.forEach((ingredient) => {
+            // Add to datalist
             const option = document.createElement("option");
             option.value = ingredient;
             datalist.appendChild(option);
+
+            // Add checkbox
+            const checkboxItem = document.createElement("div");
+            checkboxItem.className = "checkbox-item";
+            checkboxItem.innerHTML = `
+              <input type="checkbox" id="cb-${ingredient}" value="${ingredient}" onchange="updateInputFromCheckboxes()">
+              <label for="cb-${ingredient}">${ingredient}</label>
+            `;
+            checkboxContainer.appendChild(checkboxItem);
           });
         } catch (error) {
           console.error("Error:", error);
@@ -156,20 +253,52 @@
       // Load ingredients when page loads
       loadIngredients();
 
+      // Sync checkboxes with input field
+      document
+        .getElementById("ingredients")
+        .addEventListener("input", function () {
+          const inputValues = this.value
+            .split(",")
+            .map((i) => i.trim())
+            .filter((i) => i.length > 0);
+          document
+            .querySelectorAll('#ingredients-checkboxes input[type="checkbox"]')
+            .forEach((cb) => {
+              cb.checked = inputValues.includes(cb.value);
+            });
+        });
+
       async function getSuggestions() {
         const ingredientsInput = document.getElementById("ingredients");
         const resultsDiv = document.getElementById("results");
+
+        // Gather from input
+        const inputIngredients = ingredientsInput.value
+          .split(",")
+          .map((i) => i.trim())
+          .filter((i) => i.length > 0);
+
+        // Gather from checked checkboxes
+        const checkedBoxes = document.querySelectorAll(
+          '#ingredients-checkboxes input[type="checkbox"]:checked'
+        );
+        const checkedIngredients = Array.from(checkedBoxes).map(
+          (cb) => cb.value
+        );
+
+        // Merge and deduplicate
+        const allIngredients = Array.from(
+          new Set([...inputIngredients, ...checkedIngredients])
+        );
+
+        // Update input field to reflect all selected ingredients
+        ingredientsInput.value = allIngredients.join(", ");
 
         // Clear previous results
         resultsDiv.innerHTML =
           '<div class="loading">Đang tìm kiếm món ăn phù hợp...</div>';
 
-        const ingredients = ingredientsInput.value
-          .split(",")
-          .map((i) => i.trim())
-          .filter((i) => i.length > 0);
-
-        if (ingredients.length === 0) {
+        if (allIngredients.length === 0) {
           resultsDiv.innerHTML =
             '<div class="error">Vui lòng nhập ít nhất một nguyên liệu</div>';
           return;
@@ -179,7 +308,7 @@
           const res = await fetch("/suggest", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ingredients }),
+            body: JSON.stringify({ ingredients: allIngredients }),
           });
 
           const data = await res.json();
@@ -204,7 +333,22 @@
           }
 
           resultsDiv.innerHTML = data.suggestions
-            .map((recipe) => `<div class="recipe-card">${recipe}</div>`)
+            .map((recipe) => {
+              const recipeName = recipe.split("(")[0].trim();
+              const ingredients =
+                recipe.split("(")[1]?.replace(")", "").trim() || "";
+              const imagePath = `/images/${recipeName
+                .toLowerCase()
+                .replace(/\s+/g, "-")}.jpg`;
+              return `
+                <div class="recipe-card">
+                  <img src="${imagePath}" alt="${recipeName}" class="recipe-image" onerror="this.src='${getRandomDefaultImage()}'">
+                  <div class="recipe-content">
+                    <div class="recipe-title">${recipeName}</div>
+                    <div class="recipe-ingredients">${ingredients}</div>
+                  </div>
+                </div>`;
+            })
             .join("");
         } catch (error) {
           resultsDiv.innerHTML = `

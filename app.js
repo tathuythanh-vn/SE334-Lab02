@@ -53,7 +53,7 @@ app.post("/suggest", (req, res) => {
     const ingredients = req.body.ingredients
       .map((i) => `'${i}'`) // Add quotes around each ingredient
       .join(",");
-    const command = `${SWIPL_PATH} -s recipes.pl -g "findall(R, suggest_recipe([${ingredients}], R), List), writeln(List)." -t halt`;
+    const command = `${SWIPL_PATH} -s recipes.pl -g "findall(R, (recipe(R, Required, _), all_ingredients_available(Required, [${ingredients}])), List), writeln(List)." -t halt`;
 
     exec(command, (error, stdout, stderr) => {
       if (error) {
@@ -96,7 +96,7 @@ app.get("/ingredients", (req, res) => {
       });
     }
 
-    const command = `${SWIPL_PATH} -s recipes.pl -g "findall(I, (recipe(_, L), member(I, L)), Ingredients), sort(Ingredients, UniqueIngredients), writeln(UniqueIngredients)." -t halt`;
+    const command = `${SWIPL_PATH} -s recipes.pl -g "findall(I, (recipe(_, L, _), member(I, L)), Ingredients), sort(Ingredients, UniqueIngredients), writeln(UniqueIngredients)." -t halt`;
 
     exec(command, (error, stdout, stderr) => {
       if (error) {
